@@ -9,13 +9,13 @@ classdef SurfAnalysis < handle
 %         FilteredState
         Trace
         PhaseMap
-%         Nx
-%         Ny
         Name
     end
     properties (Dependent)
         X
         XY
+        Nrows
+        Ncols
     end
     
     methods
@@ -45,27 +45,19 @@ classdef SurfAnalysis < handle
                 surf(X, Y, surfObj.PhaseMap,'LineStyle','none'); 
                 view(0,90)
                 axis([0, x(end), 0, y(end)]);
-                ylabel('Height (unit)');
-                xlabel('X (unit)');
-            elseif ~isempty(surfObj.Trace)
+                ylabel(['Y (', surfObj.Xscale, ')']);
+                xlabel(['X (', surfObj.Xscale, ')']);
+                c = colorbar;
+                c.Label.String = ['Z (', surfObj.Zscale, ')'];
+                c.Label.FontSize = 12;
+            elseif ~isempty(surfObj.Trace)                
                 Nx = length(surfObj.Trace);
                 x = linspace(0, Nx*surfObj.dx, Nx);
                 plot(x, surfObj.Trace);
-                ylabel('Height (unit)');
-                xlabel('X (unit)');                
+                ylabel(['Z (', surfObj.Zscale, ')']);
+                xlabel(['X (', surfObj.Xscale, ')']);                
             end
-        end
-        
-        function X = get.X(surfObj)
-            mustBeNonempty(surfObj.Trace);
-            X = linspace(0, length(surfObj.Trace)*surfObj.dx, length(surfObj.Trace))';
-        end
-        
-        function XY = get.XY(surfObj)
-            mustBeNonempty(surfObj.PhaseMap);
-            XY{1} = linspace(0, size(surfObj.PhaseMap, 1)*surfObj.dx, size(surfObj.PhaseMap, 1))';                
-            XY{2} = linspace(0, size(surfObj.PhaseMap, 2)*surfObj.dx, size(surfObj.PhaseMap, 2))';
-        end
+        end       
         
         function avgSlice = GetAvgSlice(surfObj, dim)
         assert(~isempty(surfObj.PhaseMap),...
@@ -78,7 +70,7 @@ classdef SurfAnalysis < handle
         end
         
         function mapSlice = GetSlice(surfObj, ind, dim)
-            mustBeNonempty(obj.PhaseMap);
+            mustBeNonempty(surfObj.PhaseMap);
             assert(isa(surfObj,'SurfAnalysis'),...
                'GetSlice Error:  Input obj is of class %s, not a SurfAnalysis object.',...
                 class(surfObj));   
@@ -89,7 +81,8 @@ classdef SurfAnalysis < handle
             end
         end                   
         
-        function RotateSurf(surfObj)
+        function surfObj = RotateSurf(surfObj, rotAngle)
+            surfObj.PhaseMap = imrotate(surfObj.PhaseMap, rotAngle, 'bilinear', 'crop');             
         end
             
         function InterpMap(surfObj, dxNew)
@@ -102,7 +95,7 @@ classdef SurfAnalysis < handle
             Xq = meshgrid(xQ, xQ);
             surfObj.PhaseMap = interp2(XX, XX', surfObj.PhaseMap, Xq, Xq', 'bilinear');
             surfObj.dx = dxNew;
-        end
+        end % InterpMap
         
         function InterpTrace(obj, dxNew)
             mustBeNonempty(obj.Trace);
@@ -111,11 +104,30 @@ classdef SurfAnalysis < handle
             Ninterp = floor(xx(end)/dxNew);
             xQ = linspace(0, Ninterp*dxNew, Ninterp);
             obj.Trace = interp1(xx, obj.Trace, xQ, 'linear');  
-        end
+        end % InterpTrace
         
         function STR(S)
         end
         
+%% getter functions
+        function Nrows = get.Nrows(surfObj)
+            Nrows = size(surfObj.PhaseMap, 1);
+        end
+        
+        function Ncols = get.Ncols(surfObj)
+            Ncols = size(surfObj.PhaseMap, 2);
+        end
+        
+        function X = get.X(surfObj)
+            mustBeNonempty(surfObj.Trace);
+            X = linspace(0, length(surfObj.Trace)*surfObj.dx, length(surfObj.Trace))';
+        end
+        
+        function XY = get.XY(surfObj)
+            mustBeNonempty(surfObj.PhaseMap);
+            XY{1} = linspace(0, size(surfObj.PhaseMap, 1)*surfObj.dx, size(surfObj.PhaseMap, 1))';                
+            XY{2} = linspace(0, size(surfObj.PhaseMap, 2)*surfObj.dx, size(surfObj.PhaseMap, 2))';
+        end
 %         function Ra = Ra(obj)
 %         end
 %         
