@@ -7,15 +7,15 @@ classdef SurfAnalysis < handle
         Xscale {mustBeMember(Xscale,{'m','cm','mm', 'um', 'nm'})} = 'm'
         dx
 %         FilteredState
-        Trace
-        PhaseMap
-        Name
+        Trace    double
+        PhaseMap double
+        Name     char
     end
     properties (Dependent)
-        X
-        XY
-        Nrows
-        Ncols
+        X     double
+        XY    cell
+        Nrows double
+        Ncols double
     end
     
     methods
@@ -37,23 +37,19 @@ classdef SurfAnalysis < handle
         
         function Plot(surfObj)
             if ~isempty(surfObj.PhaseMap)
-                [Ny, Nx] = size(surfObj.PhaseMap);
-                x = linspace(0, Nx*surfObj.dx, Nx);
-                y = linspace(0, Ny*surfObj.dx, Ny);
-                [X,Y] = meshgrid(x, y);
-
-                surf(X, Y, surfObj.PhaseMap,'LineStyle','none'); 
+                XY = surfObj.XY; %#ok<*PROP>
+                [XX,YY] = meshgrid(XY{1}, XY{2});
+                surf(XX, YY, surfObj.PhaseMap,'LineStyle','none'); 
                 view(0,90)
-                axis([0, x(end), 0, y(end)]);
+                axis([0, XY{1}(end), 0, XY{2}(end)]);
                 ylabel(['Y (', surfObj.Xscale, ')']);
                 xlabel(['X (', surfObj.Xscale, ')']);
                 c = colorbar;
                 c.Label.String = ['Z (', surfObj.Zscale, ')'];
                 c.Label.FontSize = 12;
             elseif ~isempty(surfObj.Trace)                
-                Nx = length(surfObj.Trace);
-                x = linspace(0, Nx*surfObj.dx, Nx);
-                plot(x, surfObj.Trace);
+                XX = surfObj.X;
+                plot(XX, surfObj.Trace);
                 ylabel(['Z (', surfObj.Zscale, ')']);
                 xlabel(['X (', surfObj.Xscale, ')']);                
             end
@@ -87,7 +83,7 @@ classdef SurfAnalysis < handle
             
         function InterpMap(surfObj, dxNew)
             mustBeNonempty(surfObj.PhaseMap);
-            N = size(phasemap, 1);
+            N = size(surfObj.PhaseMap, 1);
             xx = linspace(0, N*surfObj.dx, N);
             [XX, ~] = meshgrid(xx, xx);
             Ninterp = floor(xx(end)/dxNew); 
@@ -97,18 +93,30 @@ classdef SurfAnalysis < handle
             surfObj.dx = dxNew;
         end % InterpMap
         
-        function InterpTrace(obj, dxNew)
-            mustBeNonempty(obj.Trace);
-            N = length(obj.Trace);
-            xx = linspace(0, N*obj.dx, N);
+        function InterpTrace(surfObj, dxNew)
+            mustBeNonempty(surfObj.Trace);
+            N = length(surfObj.Trace);
+            xx = linspace(0, N*surfObj.dx, N);
             Ninterp = floor(xx(end)/dxNew);
             xQ = linspace(0, Ninterp*dxNew, Ninterp);
-            obj.Trace = interp1(xx, obj.Trace, xQ, 'linear');  
+            surfObj.Trace = interp1(xx, surfObj.Trace, xQ, 'linear');  
+            surfObj.dx = dxNew;
         end % InterpTrace
+
+        function fitPlane = FitPlane(surfObj)
+            % replace surfObj.PhaseMap with Z
+            [x, y] = meshgrid(1:1:size(surfObj.PhaseMap, 2),...
+                              1:1:size(surfObj.PhaseMap, 1));
+            XX = x(~isnan(surfObj.PhaseMap));
+            YY = y(~isnan(surfObj.PhaseMap));
+            ZZ = surfObj.PhaseMap(~isnan(surfObj.PhaseMap));
+            A = [ones(size(XX)) XX YY]\ZZ; % model
+            fitPlane = ones(size(surfObj.PhaseMap)).*A(1) + x.*A(2) + y.*A(3);
+        end        
         
-        function STR(S)
+        function obj = Offset(obj, offsetVal)
+            obj.Trace = obj.Trace + offsetVal;
         end
-        
 %% getter functions
         function Nrows = get.Nrows(surfObj)
             Nrows = size(surfObj.PhaseMap, 1);
@@ -128,6 +136,7 @@ classdef SurfAnalysis < handle
             XY{1} = linspace(0, size(surfObj.PhaseMap, 1)*surfObj.dx, size(surfObj.PhaseMap, 1))';                
             XY{2} = linspace(0, size(surfObj.PhaseMap, 2)*surfObj.dx, size(surfObj.PhaseMap, 2))';
         end
+        
 %         function Ra = Ra(obj)
 %         end
 %         
@@ -136,16 +145,8 @@ classdef SurfAnalysis < handle
 %         
 %         function Rz = Rz(obj)
 %         end
-        function fitPlane = FitPlane(surfObj)
-            % replace surfObj.PhaseMap with Z
-            [x, y] = meshgrid(1:1:size(surfObj.PhaseMap, 2),...
-                              1:1:size(surfObj.PhaseMap, 1));
-            XX = x(~isnan(surfObj.PhaseMap));
-            YY = y(~isnan(surfObj.PhaseMap));
-            ZZ = surfObj.PhaseMap(~isnan(surfObj.PhaseMap));
-            A = [ones(size(XX)) XX YY]\ZZ; % model
-            fitPlane = ones(size(surfObj.PhaseMap)).*A(1) + x.*A(2) + y.*A(3);
-        end
-        
+%
+%         function STR(S)
+%         end        
     end
 end
