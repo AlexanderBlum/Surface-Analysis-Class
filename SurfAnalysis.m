@@ -111,10 +111,12 @@ classdef SurfAnalysis < handle
             YY = y(~isnan(surfObj.PhaseMap));
             ZZ = surfObj.PhaseMap(~isnan(surfObj.PhaseMap));
             A = [ones(size(XX)) XX YY]\ZZ; % model
-            fitPlane = ones(size(surfObj.PhaseMap)).*A(1) + x.*A(2) + y.*A(3);
+%             A = [XX YY]\ZZ; % model            
+%             fitPlane = x.*A(1) + y.*A(2);
+            fitPlane = ones(size(surfObj.PhaseMap)).*A(1) + x.*A(2) + y.*A(3);            
         end        
         
-        function obj = Offset(obj, offsetVal)
+        function Offset(obj, offsetVal)
             obj.Trace = obj.Trace + offsetVal;
         end
 %% getter functions
